@@ -103,7 +103,8 @@ let xkbMonitorPid: number | undefined;
 export function stopXkbRemapWatch(): void {
   if (xkbMonitorPid === undefined) return;
   try {
-    process.kill(-xkbMonitorPid, "SIGTERM");
+    // SIGKILL the whole group: the watchdog shell and gsettings itself.
+    process.kill(-xkbMonitorPid, "SIGKILL");
   } catch {
     // Already gone
   }
