@@ -25,6 +25,8 @@ import {
   realpathSync,
   copyFileSync,
   chmodSync,
+  renameSync,
+  writeFileSync,
 } from "node:fs";
 import { dirname, join, normalize } from "node:path";
 import {
@@ -407,6 +409,57 @@ const config: ForgeConfig = {
     },
     postPackage: async (_forgeConfig, options) => {
       const { outputPaths, platform, arch } = options;
+
+      // =====================================================================
+      // Linux: launch through a wrapper that selects the XWayland backend
+      // =====================================================================
+      //
+      // WHY: as a native Wayland client (Electron's default since v38) the app
+      // cannot position its windows or keep them on top, so the floating
+      // widget ends up inside the main window instead of above the Dock.
+      // Running through XWayland (--ozone-platform=x11) avoids that.
+      //
+      // The backend is chosen before any JavaScript runs, so the app cannot
+      // set it itself, and relaunching from inside the app dies in Chromium's
+      // sandbox setup once installed. Passing the switch from the desktop
+      // entry alone is not enough either: it misses `amical` run from a
+      // terminal, and the desktop shell can keep launching a stale entry.
+      //
+      // SOLUTION: rename the real binary and put a small shell wrapper in its
+      // place, so every way of starting the app gets the switch. An explicit
+      // --ozone-platform on the command line is passed through untouched.
+      // The AppImage also gets --no-sandbox: it has no usable sandbox (no
+      // setuid helper, and Ubuntu restricts unprivileged user namespaces), so
+      // without it the app aborts at startup.
+      // =====================================================================
+      if (platform === "linux") {
+        for (const outputPath of outputPaths) {
+          const wrapperPath = join(outputPath, "Amical");
+          const binaryPath = join(outputPath, "Amical.bin");
+          if (!existsSync(wrapperPath) || existsSync(binaryPath)) continue;
+          renameSync(wrapperPath, binaryPath);
+          writeFileSync(
+            wrapperPath,
+            [
+              "#!/bin/sh",
+              "# Starts Amical through XWayland; see postPackage in forge.config.ts.",
+              'HERE="$(dirname "$(readlink -f "$0")")"',
+              'if [ -n "$APPIMAGE" ]; then',
+              '  set -- --no-sandbox "$@"',
+              "fi",
+              'for arg in "$@"; do',
+              '  case "$arg" in',
+              '    --ozone-platform*) exec "$HERE/Amical.bin" "$@" ;;',
+              "  esac",
+              "done",
+              'exec "$HERE/Amical.bin" --ozone-platform=x11 "$@"',
+              "",
+            ].join("\n"),
+          );
+          chmodSync(wrapperPath, 0o755);
+          console.log(`✓ Installed Linux launch wrapper at ${wrapperPath}`);
+        }
+      }
       // =====================================================================
       // Bundle Windows DLLs for ONNX Runtime
       // =====================================================================

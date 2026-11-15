@@ -15,7 +15,7 @@
 | 症状 | 原因 | 対処 |
 | --- | --- | --- |
 | 起動時に `systemPreferences.getMediaAccessStatus is not a function` で失敗 | upstreamの新しいオンボーディングのコードが、macOS/Windows専用の権限APIを呼んでいた | Linuxでは呼ばないようにした（`onboarding-service.ts`、`trpc/routers/onboarding.ts`） |
-| 録音中のウィジェットがDockの上に出ない | Electronが38から44になり、Waylandに直結して動くのが既定になった。Waylandではアプリが自分のウィンドウ位置や最前面表示を決められず、作業領域もDockを除外しない | XWayland経由で動かす（`--ozone-platform=x11`）。`.deb` はデスクトップエントリがこの引数を渡す（`resources/desktop.ejs`）。AppImageと `pnpm start` では引数で指定する。アプリ自身が引数を付けて再起動する方式も試したが、やめた。インストール後は、再起動したプロセスがUbuntuのAppArmor（ユーザー名前空間の制限）のもとでChromiumのサンドボックス初期化中に落ちる（SIGTRAP）ため |
+| 録音中のウィジェットがDockの上に出ない | Electronが38から44になり、Waylandに直結して動くのが既定になった。Waylandではアプリが自分のウィンドウ位置や最前面表示を決められず、作業領域もDockを除外しない | XWayland経由で動かす（`--ozone-platform=x11`）。パッケージ版は、実行ファイルを置き換える起動ラッパーがこの引数を付ける（`forge.config.ts` の `postPackage`）。`pnpm start` では引数で指定する。より単純な2つの方法はうまくいかなかった。アプリ自身が引数を付けて再起動する方式は、インストール後にUbuntuのAppArmor（ユーザー名前空間の制限）のもとでChromiumのサンドボックス初期化中に落ちた（SIGTRAP）。デスクトップエントリだけに引数を書く方式は、端末から `amical` を実行した場合と、シェルが古いエントリのまま起動した場合に効かなかった |
 | 音声認識の結果が空になる | upstreamがマイク取り込みの `autoGainControl` を無効にした。入力音量が小さいと音声検出に引っかからない | コードは変更していない。マイクの入力音量を上げる |
 | サインイン画面が空で、枠だけ振動する | OAuthのエンドポイントの既定値がコードから無くなり、`apps/desktop/.env` が無いとすべて空になる | `.env` を作る（後述）。設定が無いときはウィンドウを作る前に失敗するようにした |
 | クラウド音声認識が `NETWORK_ERROR` で失敗 | `API_ENDPOINT` も既定値が無くなり、以前のホストは廃止されていた | `API_ENDPOINT=https://dictation.amical.ai` を設定する |

@@ -225,9 +225,9 @@ cd apps/desktop && ELECTRON_DISABLE_SANDBOX=1 pnpm start -- --ozone-platform=x11
 
 Notes:
 
-- `--ozone-platform=x11` runs the app through XWayland, which the floating widget needs in order to sit above the Dock (a native Wayland client cannot position its own windows). The installed `.deb` passes it from its desktop entry; when starting `amical` from a terminal or running the AppImage, add the flag yourself. The session itself must still be Wayland.
+- `--ozone-platform=x11` runs the app through XWayland, which the floating widget needs in order to sit above the Dock (a native Wayland client cannot position its own windows). Packaged builds (`.deb` and AppImage) add it themselves through a launch wrapper, so only `pnpm start` needs it on the command line. The session itself must still be Wayland.
 - Install dependencies on Linux with `ONNXRUNTIME_NODE_INSTALL=skip pnpm install --frozen-lockfile`; the variable skips onnxruntime's optional CUDA download, which fails on Linux.
-- `ELECTRON_DISABLE_SANDBOX=1` is only needed during development (after installing the `.deb`, the SUID sandbox is already set up). The AppImage has no usable sandbox on Ubuntu 26.04, so run it as `./Amical-<ver>-x64.AppImage --no-sandbox --ozone-platform=x11`.
+- `ELECTRON_DISABLE_SANDBOX=1` is only needed during development (after installing the `.deb`, the SUID sandbox is already set up). The AppImage has no usable sandbox on Ubuntu 26.04, so its launch wrapper adds `--no-sandbox`.
 - Build packages with `cd apps/desktop && pnpm make:linux` (do not use the `--targets` flag, because it makes Forge ignore the settings in `forge.config.ts`).
 - Output: `apps/desktop/out/make/deb/x64/amical_<ver>_amd64.deb` / `apps/desktop/out/make/AppImage/x64/Amical-<ver>-x64.AppImage`
 - See [apps/desktop/docs/linux-deb-packaging.md](apps/desktop/docs/linux-deb-packaging.md) for details.

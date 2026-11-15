@@ -38,11 +38,9 @@ if (process.platform === "linux") {
   // since v38). Wayland gives clients no way to position a window or keep it
   // above others, and reports a work area that ignores the Dock, so the
   // floating widget could not sit above the Dock. The backend is fixed before
-  // any JavaScript runs, so the switch cannot be set here; it comes from the
-  // launcher instead: the .deb desktop entry (resources/desktop.ejs), or the
-  // command line for the AppImage and `pnpm start` (see README). Relaunching
-  // with the switch from here was tried and dropped: the relaunched process
-  // dies in Chromium's sandbox setup under Ubuntu's AppArmor userns rules.
+  // any JavaScript runs, so the switch cannot be set here. Packaged builds
+  // get it from a launch wrapper (postPackage in forge.config.ts); `pnpm
+  // start` needs it on the command line (see README).
 
   // The Linux OAuth flow runs in an in-app window (see AuthService) and reads
   // the callback URL there. Registering the deep-link schemes as standard
