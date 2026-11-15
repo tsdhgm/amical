@@ -11,13 +11,30 @@ import { restoreSystemAudioOnExit } from "./handlers/recording.js";
  * those threads while shutting down, so the helper would hang half-exited and
  * outlive the app as an orphan. After the cleanup, kill the process outright.
  */
+let exiting = false;
 function exitNow(): never {
-  restoreSystemAudioOnExit();
-  stopXkbRemapWatch();
+  if (!exiting) {
+    exiting = true;
+    try {
+      restoreSystemAudioOnExit();
+      stopXkbRemapWatch();
+    } catch {
+      // Never let cleanup keep the process alive.
+    }
+  }
   process.kill(process.pid, "SIGKILL");
   // Unreachable in practice; satisfies the type and covers a failed kill.
   process.exit(0);
 }
+
+// Every other way out must end the same way. Once the app is gone, writing an
+// event or a log line fails with EPIPE; unhandled, that sends Node down its
+// own exit path, which hangs as described above.
+process.on("exit", exitNow);
+process.on("uncaughtException", exitNow);
+process.on("unhandledRejection", exitNow);
+process.stdout.on("error", exitNow);
+process.stderr.on("error", exitNow);
 
 process.stderr.write("LinuxHelper: starting\n");
 
@@ -67,6 +84,9 @@ rl.on("line", (line: string) => {
 rl.on("close", () => {
   stdinClosed = true;
   maybeExit();
+  // The app is gone. Give in-flight requests a moment, then leave regardless:
+  // a request that never settles must not keep the helper alive.
+  setTimeout(exitNow, 2000);
 });
 
 process.on("SIGTERM", () => {
