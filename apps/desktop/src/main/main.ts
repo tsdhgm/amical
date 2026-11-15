@@ -28,31 +28,21 @@ if (!app.isPackaged && process.platform === "darwin") {
   app.once("ready", () => app.setActivationPolicy("regular"));
 }
 
-// Linux: run through XWayland rather than as a native Wayland client
-// (Electron's default since v38). Wayland gives clients no way to position a
-// window or keep it above others, and reports a work area that ignores the
-// Dock, so the floating widget could not be placed above the Dock. The display
-// backend is fixed before any JavaScript runs, so the only way to choose it
-// from here is to relaunch with the switch. An explicit --ozone-platform on
-// the command line is left alone (so --ozone-platform=wayland opts back in),
-// as is the E2E harness's own launch. Unpackaged builds are not relaunched
-// either, because that would detach the app from `pnpm start` and its dev
-// server; pass `-- --ozone-platform=x11` there instead (see README).
-const relaunchingForX11 =
-  process.platform === "linux" &&
-  app.isPackaged &&
-  // argv, not app.commandLine: Electron adds its own default there.
-  !process.argv.some((arg) => arg.startsWith("--ozone-platform")) &&
-  !process.env.AMICAL_E2E_USER_DATA_DIR;
-if (relaunchingForX11) {
-  app.relaunch({ args: [...process.argv.slice(1), "--ozone-platform=x11"] });
-  app.exit(0);
-}
-
 if (process.platform === "linux") {
   // Match the WM class to amical.desktop so the GNOME Dock shows the right
   // icon (must be set before the app is ready).
   app.commandLine.appendSwitch("class", "amical");
+
+  // Note on the display backend: the app is meant to run through XWayland
+  // (--ozone-platform=x11), not as a native Wayland client (Electron's default
+  // since v38). Wayland gives clients no way to position a window or keep it
+  // above others, and reports a work area that ignores the Dock, so the
+  // floating widget could not sit above the Dock. The backend is fixed before
+  // any JavaScript runs, so the switch cannot be set here; it comes from the
+  // launcher instead: the .deb desktop entry (resources/desktop.ejs), or the
+  // command line for the AppImage and `pnpm start` (see README). Relaunching
+  // with the switch from here was tried and dropped: the relaunched process
+  // dies in Chromium's sandbox setup under Ubuntu's AppArmor userns rules.
 
   // The Linux OAuth flow runs in an in-app window (see AuthService) and reads
   // the callback URL there. Registering the deep-link schemes as standard
@@ -65,9 +55,7 @@ if (process.platform === "linux") {
   );
 }
 
-if (relaunchingForX11) {
-  // Exiting; the relaunched process loads the app.
-} else if (started) {
+if (started) {
   // Squirrel.Windows event hook process (--squirrel-install/-updated/
   // -obsolete/-uninstall): electron-squirrel-startup spawns the Update.exe
   // shortcut work and quits once it completes. Nothing else may run here —
