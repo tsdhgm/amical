@@ -13,12 +13,16 @@ here.
 
 ## Linux porting status
 
-Porting Amical Desktop to Linux. This fork (`tosihide/amical`) tracks the
+Porting Amical Desktop to Linux. This fork (`tsdhgm/amical`) tracks the
 upstream `amicalhq/amical` and adds Linux-specific support.
 
-- Active branch: `ubuntu-26.04-lts` — targets Ubuntu 26.04 LTS only
-- Predecessor: `develop_ubuntu` (24.04 series), released through `v1.1.0-linux.7`
-- 26.04 series starts at `v1.1.0-linux.8` (2026-05-04)
+- This branch: `develop_ubuntu_electron38` — Amical 1.1.0 on Electron 38.1,
+  Ubuntu 26.04 LTS only. It is the old `ubuntu-26.04-lts` line (first
+  developed in `tosihide/amical`, released there up to `v1.1.0-linux.8`) plus
+  Linux helper fixes; releases continue here from `v1.1.0-linux.9`.
+- It is a stopgap. The port onto current upstream (Electron 44) is on
+  `develop_ubuntu`; once that is stable this branch is to be deleted. Do not
+  merge upstream here or add features.
 
 ### Known platform quirks (Linux)
 - **whisper.cpp + OpenMP**: static `libgomp.a` lacks `-fPIC`, so building the
@@ -65,13 +69,13 @@ Outputs:
 
 ### Pre-release on GitHub
 - Tag: `v1.1.0-linux.N` (incremental on the same `1.1.0` base)
-- Repo: `tosihide/amical`, marked `--prerelease`
+- Repo: `tsdhgm/amical`, marked `--prerelease`
 - Notes: **English required**; Japanese optional. When adding Japanese,
   put it after the English section under `## 日本語`.
 
 ```bash
 gh release create v1.1.0-linux.N \
-  --repo tosihide/amical --target <branch> --prerelease \
+  --repo tsdhgm/amical --target <branch> --prerelease \
   --title "v1.1.0-linux.N (<distro/context>)" \
   --notes "$(cat <<'EOF'
 ...English notes...
