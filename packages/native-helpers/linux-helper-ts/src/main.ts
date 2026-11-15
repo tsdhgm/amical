@@ -3,8 +3,20 @@ import { dispatch } from "./rpc/dispatcher.js";
 import { startKeyboardMonitor } from "./evdev/monitor.js";
 import { restoreSystemAudioOnExit } from "./handlers/recording.js";
 
-// Covers every way out of the process except SIGKILL.
-process.on("exit", restoreSystemAudioOnExit);
+/**
+ * Leave the process for good.
+ *
+ * process.exit() is not enough here: the evdev monitor keeps blocking reads
+ * open on the keyboard devices in libuv's thread pool, and Node waits for
+ * those threads while shutting down, so the helper would hang half-exited and
+ * outlive the app as an orphan. After the cleanup, kill the process outright.
+ */
+function exitNow(): never {
+  restoreSystemAudioOnExit();
+  process.kill(process.pid, "SIGKILL");
+  // Unreachable in practice; satisfies the type and covers a failed kill.
+  process.exit(0);
+}
 
 process.stderr.write("LinuxHelper: starting\n");
 
@@ -17,8 +29,7 @@ let stdinClosed = false;
 
 function maybeExit(): void {
   if (stdinClosed && pendingCount === 0) {
-    process.stderr.write("LinuxHelper: all done, exiting\n");
-    process.exit(0);
+    exitNow();
   }
 }
 
@@ -53,17 +64,14 @@ rl.on("line", (line: string) => {
 });
 
 rl.on("close", () => {
-  process.stderr.write("LinuxHelper: stdin closed\n");
   stdinClosed = true;
   maybeExit();
 });
 
 process.on("SIGTERM", () => {
-  process.stderr.write("LinuxHelper: received SIGTERM, exiting\n");
-  process.exit(0);
+  exitNow();
 });
 
 process.on("SIGINT", () => {
-  process.stderr.write("LinuxHelper: received SIGINT, exiting\n");
-  process.exit(0);
+  exitNow();
 });
