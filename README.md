@@ -219,14 +219,16 @@ To start the development build:
 
 ```bash
 # Normal development start
-cd apps/desktop && ELECTRON_DISABLE_SANDBOX=1 pnpm start
+cd apps/desktop && ELECTRON_DISABLE_SANDBOX=1 pnpm start -- --ozone-platform=x11
 
 # Remote debugging (to connect via the Chrome DevTools Protocol)
-cd apps/desktop && ELECTRON_DISABLE_SANDBOX=1 pnpm start -- --remote-debugging-port=9222
+cd apps/desktop && ELECTRON_DISABLE_SANDBOX=1 pnpm start -- --ozone-platform=x11 --remote-debugging-port=9222
 ```
 
 Notes:
 
+- `--ozone-platform=x11` runs the app through XWayland, which the floating widget needs in order to sit above the Dock (a native Wayland client cannot position its own windows). Packaged builds switch to it automatically; the session itself must still be Wayland.
+- Install dependencies on Linux with `ONNXRUNTIME_NODE_INSTALL=skip pnpm install --frozen-lockfile`; the variable skips onnxruntime's optional CUDA download, which fails on Linux.
 - `ELECTRON_DISABLE_SANDBOX=1` is only needed during development (after installing the `.deb`, the SUID sandbox is already set up; the AppImage adds `--no-sandbox` automatically).
 - Build packages with `cd apps/desktop && pnpm make:linux` (do not use the `--targets` flag, because it makes Forge ignore the settings in `forge.config.ts`).
 - Output: `apps/desktop/out/make/deb/x64/amical_<ver>_amd64.deb` / `apps/desktop/out/make/AppImage/x64/Amical-<ver>-x64.AppImage`

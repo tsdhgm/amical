@@ -303,6 +303,9 @@ export const onboardingRouter = createRouter({
   requestMicrophonePermission: procedure.mutation(
     async (): Promise<boolean> => {
       try {
+        if (process.platform === "linux") {
+          return true; // Linux has no media access API
+        }
         const status = await systemPreferences.askForMediaAccess("microphone");
         logger.main.info("Microphone permission requested, status:", status);
         return status;

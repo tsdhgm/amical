@@ -399,6 +399,13 @@ export class AuthService extends EventEmitter {
       return;
     }
 
+    // Parse the URLs first: with no OAuth configuration (empty endpoints)
+    // this throws before an empty window is left on screen.
+    const redirectUri = this.config.redirectUri;
+    const redirectScheme = new URL(redirectUri).protocol.replace(/:$/, "");
+    const loginOrigin = new URL(loginUrl).origin;
+    new URL(authorizeUrl);
+
     const authWindow = new BrowserWindow({
       width: 800,
       height: 700,
@@ -411,8 +418,6 @@ export class AuthService extends EventEmitter {
     });
     this.authWindow = authWindow;
 
-    const redirectUri = this.config.redirectUri;
-    const loginOrigin = new URL(loginUrl).origin;
     let authorizeAttempted = false;
 
     // An https redirect URI is caught as an ordinary redirect.
@@ -427,7 +432,7 @@ export class AuthService extends EventEmitter {
     // A custom-scheme redirect URI (amical:// or amical-dev://) is caught by a
     // session-level protocol handler: Chromium truncates non-standard scheme
     // URLs in navigation events, so only the handler sees code & state.
-    const scheme = new URL(redirectUri).protocol.replace(/:$/, "");
+    const scheme = redirectScheme;
     if (scheme !== "http" && scheme !== "https") {
       const { protocol } = authWindow.webContents.session;
       if (!protocol.isProtocolHandled(scheme)) {

@@ -448,7 +448,10 @@ export class OnboardingService extends EventEmitter {
       logger.main.info("Onboarding needed", {
         forceOnboarding,
         notCompleted: !hasCompleted,
-        microphoneStatus: systemPreferences.getMediaAccessStatus("microphone"),
+        microphoneStatus:
+          process.platform === "linux"
+            ? "granted"
+            : systemPreferences.getMediaAccessStatus("microphone"),
         accessibility: permissions.accessibility,
       });
     }
