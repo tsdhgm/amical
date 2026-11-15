@@ -85,11 +85,38 @@ function loadXkbRemap(): void {
  * When the user changes keyboard remapping in Wayland settings,
  * the remap table is rebuilt automatically.
  */
+// `gsettings monitor` never exits on its own and holds an inotify instance.
+// Left behind once per helper start, these exhausted the per-user inotify
+// limit (128) within a day of testing. So it runs in its own process group,
+// which stopXkbRemapWatch() kills on the way out, under a small shell
+// watchdog that also ends it if the helper dies without cleanup (SIGKILL).
+const XKB_MONITOR_SCRIPT = [
+  "gsettings monitor org.gnome.desktop.input-sources xkb-options &",
+  "child=$!",
+  'while kill -0 "$PPID" 2>/dev/null; do sleep 5; done',
+  'kill "$child" 2>/dev/null',
+].join("\n");
+
+let xkbMonitorPid: number | undefined;
+
+/** Stop the gsettings monitor (and its watchdog). Safe to call repeatedly. */
+export function stopXkbRemapWatch(): void {
+  if (xkbMonitorPid === undefined) return;
+  try {
+    process.kill(-xkbMonitorPid, "SIGTERM");
+  } catch {
+    // Already gone
+  }
+  xkbMonitorPid = undefined;
+}
+
 function watchXkbRemap(): void {
   try {
-    const proc = spawn("gsettings", ["monitor", "org.gnome.desktop.input-sources", "xkb-options"], {
+    const proc = spawn("sh", ["-c", XKB_MONITOR_SCRIPT], {
       stdio: ["ignore", "pipe", "ignore"],
+      detached: true,
     });
+    xkbMonitorPid = proc.pid;
 
     let buffer = "";
     proc.stdout.on("data", (chunk: Buffer) => {
