@@ -1,6 +1,6 @@
 # Linux Development Setup
 
-Guide for building and running Amical Desktop on Linux (Ubuntu 24.04 LTS).
+Guide for building and running Amical Desktop on Linux (Ubuntu 26.04 LTS).
 
 > **Distribution packages: build on 24.04 to cover both 24.04 and 26.04.**
 > A `.deb`/AppImage built on 24.04 (glibc 2.39) runs on both releases via glibc
@@ -27,7 +27,7 @@ corepack enable
 | Package | Ubuntu Package | Version | Purpose |
 |---------|---------------|---------|---------|
 | wl-clipboard | `wl-clipboard` | 2.0+ | Wayland clipboard (wl-copy/wl-paste) |
-| ydotool | `ydotool` | 0.1.8+ | Keyboard simulation for paste |
+| ydotool | `ydotool` | 1.0+ | Keyboard simulation for paste |
 | GStreamer good plugins | `gstreamer1.0-plugins-good` | 1.20+ | Notification sound playback (mp3) |
 | PulseAudio utils | `pulseaudio-utils` | 16.0+ | System audio mute control (pactl) |
 
@@ -35,7 +35,7 @@ corepack enable
 
 | Package | Ubuntu Package | Purpose |
 |---------|---------------|---------|
-| libgtk-3 | `libgtk-3-0` | GTK windowing |
+| libgtk-3 | `libgtk-3-0t64` | GTK windowing |
 | libnss3 | `libnss3` | Chromium security |
 | libasound2 | `libasound2t64` | ALSA audio |
 | libgbm | `libgbm1` | GPU buffer management |
@@ -44,7 +44,7 @@ corepack enable
 
 | Package | Ubuntu Package | Purpose |
 |---------|---------------|---------|
-| PipeWire + PulseAudio compat | `pipewire-pulse` | Modern audio server (Ubuntu 24.04 default) |
+| PipeWire + PulseAudio compat | `pipewire-pulse` | Modern audio server (Ubuntu 26.04 default) |
 | PulseAudio | `pulseaudio` | Legacy audio server |
 
 ### Install all dependencies
@@ -55,7 +55,7 @@ sudo apt install \
   ydotool \
   gstreamer1.0-plugins-good \
   pulseaudio-utils \
-  libgtk-3-0 \
+  libgtk-3-0t64 \
   libnss3 \
   libasound2t64 \
   libgbm1
@@ -67,6 +67,15 @@ sudo apt install \
 # Required for evdev keyboard monitoring (global shortcuts)
 sudo usermod -aG input $USER
 # Logout and login for group changes to take effect
+```
+
+### ydotoold Daemon
+
+The `ydotool` package (1.0+) ships a user-level systemd unit and a `/dev/uinput` udev rule. After login (so the input group is in effect), enable the daemon:
+
+```bash
+systemctl --user enable --now ydotool
+systemctl --user status ydotool   # verify it is active
 ```
 
 ## Environment Setup
@@ -164,4 +173,3 @@ If you change xkb options while Amical is running, restart the app for the new m
 - **OAuth flow**: Uses BrowserWindow instead of system browser (workaround for custom scheme handling on Linux)
 - **Wayland required for paste**: The paste feature uses `wl-copy`/`wl-paste` (Wayland clipboard) and `ydotool`. On X11 sessions, paste will not work — log in with a Wayland session instead
 - **Terminal paste**: `ydotool` simulates Shift+Insert which works in most terminals, but some may need configuration
-- **ydotool versions**: Both v0.1.x (`shift+Insert` format) and v1.x (`42:1 110:1` format) are supported

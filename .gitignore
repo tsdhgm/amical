@@ -50,7 +50,6 @@ __pycache__/
 # Misc
 .DS_Store
 *.pem
-CLAUDE.md
 .serena
 .local
 .claude
