@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from "crypto";
 import { EventEmitter } from "events";
-import { shell } from "electron";
+import { BrowserWindow, shell } from "electron";
 import {
   Cause,
   Data,
@@ -19,6 +19,7 @@ import { logger } from "../main/logger";
 import { down, up } from "../main/runtime/layer-helpers";
 import { AppScopeTag, AuthServiceTag } from "../main/runtime/tags";
 import { getAmicalClientHeaders, getUserAgent } from "../utils/http-client";
+import { isLinux } from "../utils/platform";
 import type {
   ContractFailureKind,
   ContractFailureProperties,
@@ -150,6 +151,8 @@ function parseTokenResponse(
 export class AuthService extends EventEmitter {
   private readonly config: AuthConfig;
   private pendingAuth: PendingAuth | null = null;
+  // Linux only: the in-app OAuth window (see openAuthWindow).
+  private authWindow: BrowserWindow | null = null;
   private authGeneration = 0;
   private readonly beforeLogoutHandlers = new Set<
     () => Effect.Effect<void, unknown>
@@ -325,7 +328,7 @@ export class AuthService extends EventEmitter {
   login(): Effect.Effect<void, AuthServiceFailure> {
     return Effect.gen({ self: this }, function* () {
       yield* this.advanceGenerationAndAbortRefresh();
-      const authUrl = yield* Effect.try({
+      const { authUrl, query } = yield* Effect.try({
         try: () => {
           const { verifier, challenge } = this.generatePKCE();
           const state = this.generateState();
@@ -345,10 +348,29 @@ export class AuthService extends EventEmitter {
             code_challenge: challenge,
             code_challenge_method: "S256",
           });
-          return `${this.config.authorizationEndpoint}?${params.toString()}`;
+          const query = params.toString();
+          return {
+            authUrl: `${this.config.authorizationEndpoint}?${query}`,
+            query,
+          };
         },
         catch: (cause) => authFailure(cause, "Unable to start OAuth flow"),
       });
+
+      if (isLinux()) {
+        // Linux runs the whole flow in an in-app window instead of the default
+        // browser: sign in on the login page, then load the authorize endpoint
+        // with the session cookie and intercept its redirect to the callback.
+        const loginUrl = `${
+          process.env.AUTH_LOGIN_URL || "https://login.amical.ai/auth/sign-in"
+        }?${query}`;
+        logger.main.info("Starting OAuth flow (Linux) - login URL:", loginUrl);
+        yield* Effect.try({
+          try: () => this.openAuthWindow(loginUrl, authUrl),
+          catch: (cause) => authFailure(cause, "Unable to open OAuth flow"),
+        });
+        return;
+      }
 
       logger.main.info("Starting OAuth flow with URL:", authUrl);
       yield* Effect.tryPromise({
@@ -365,6 +387,104 @@ export class AuthService extends EventEmitter {
         ),
       ),
     );
+  }
+
+  /**
+   * Linux only: open a BrowserWindow for the OAuth login and capture the
+   * callback in-process instead of through an OS-level deep link.
+   */
+  private openAuthWindow(loginUrl: string, authorizeUrl: string): void {
+    if (this.authWindow && !this.authWindow.isDestroyed()) {
+      this.authWindow.focus();
+      return;
+    }
+
+    const authWindow = new BrowserWindow({
+      width: 800,
+      height: 700,
+      show: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        partition: "auth-oauth",
+      },
+    });
+    this.authWindow = authWindow;
+
+    const redirectUri = this.config.redirectUri;
+    const loginOrigin = new URL(loginUrl).origin;
+    let authorizeAttempted = false;
+
+    // An https redirect URI is caught as an ordinary redirect.
+    authWindow.webContents.on("will-redirect", (event, url) => {
+      if (url.startsWith(redirectUri)) {
+        event.preventDefault();
+        logger.main.info("OAuth callback captured via will-redirect");
+        this.handleAuthWindowCallback(url);
+      }
+    });
+
+    // A custom-scheme redirect URI (amical:// or amical-dev://) is caught by a
+    // session-level protocol handler: Chromium truncates non-standard scheme
+    // URLs in navigation events, so only the handler sees code & state.
+    const scheme = new URL(redirectUri).protocol.replace(/:$/, "");
+    if (scheme !== "http" && scheme !== "https") {
+      const { protocol } = authWindow.webContents.session;
+      if (!protocol.isProtocolHandled(scheme)) {
+        protocol.handle(scheme, (request) => {
+          logger.main.info("OAuth callback captured via protocol handler");
+          this.handleAuthWindowCallback(request.url);
+          return new Response("", { status: 200 });
+        });
+      }
+    }
+
+    // After sign-in the login site lands on its root, either as an SPA
+    // in-page navigation or a full one; then continue to the authorize
+    // endpoint, which now sees the session cookie.
+    const onLoginComplete = (_event: unknown, url: string) => {
+      if (authorizeAttempted) return;
+      if (url === loginOrigin || url === `${loginOrigin}/`) {
+        authorizeAttempted = true;
+        logger.main.info("Login complete, navigating to authorize endpoint");
+        void authWindow.loadURL(authorizeUrl).catch(() => undefined);
+      }
+    };
+    authWindow.webContents.on("did-navigate-in-page", onLoginComplete);
+    authWindow.webContents.on("did-navigate", onLoginComplete);
+
+    authWindow.on("closed", () => {
+      if (this.authWindow === authWindow) this.authWindow = null;
+    });
+
+    void authWindow.loadURL(loginUrl).catch((error: unknown) => {
+      logger.main.error("Failed to load OAuth login page:", error);
+    });
+  }
+
+  /** Linux only: complete the flow from a callback URL the auth window saw. */
+  private handleAuthWindowCallback(url: string): void {
+    try {
+      const parsedUrl = new URL(url);
+      const code = parsedUrl.searchParams.get("code");
+      const state = parsedUrl.searchParams.get("state");
+      if (code) {
+        // handleAuthCallback logs and emits auth-error itself.
+        void runAuthEffect(this.handleAuthCallback(code, state)).catch(
+          () => undefined,
+        );
+      } else {
+        logger.main.warn("OAuth callback URL is missing the code parameter");
+      }
+    } catch (error) {
+      logger.main.error("Failed to parse OAuth callback URL:", error);
+    }
+
+    const authWindow = this.authWindow;
+    this.authWindow = null;
+    if (authWindow && !authWindow.isDestroyed()) {
+      authWindow.close();
+    }
   }
 
   /** Handle OAuth callback from deep link. */

@@ -4,6 +4,9 @@ import { z } from "zod";
 export const PasteTextParamsSchema = z.object({
   transcript: z.string(),
   preserveClipboard: z.boolean().optional(),
+  // Linux helper only: the desktop already wrote the clipboard, so the helper
+  // just simulates the paste keystroke. Other helpers ignore it.
+  keystrokeOnly: z.boolean().optional(),
 });
 export type PasteTextParams = z.infer<typeof PasteTextParamsSchema>;
 

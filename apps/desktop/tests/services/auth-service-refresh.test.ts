@@ -15,6 +15,13 @@ import { createTestDatabase, type TestDatabase } from "../helpers/test-db";
 import { setTestDatabase } from "../setup";
 import { logger } from "../../src/main/logger";
 
+// These tests cover the default-browser login flow. Linux uses an in-app auth
+// window instead, so pin the platform check to keep them host-independent.
+vi.mock("../../src/utils/platform", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/utils/platform")>()),
+  isLinux: () => false,
+}));
+
 function idToken(subject: string): string {
   const payload = Buffer.from(JSON.stringify({ sub: subject })).toString(
     "base64url",

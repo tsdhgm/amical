@@ -1,4 +1,4 @@
-import { app } from "electron";
+import { app, protocol } from "electron";
 import started from "electron-squirrel-startup";
 import path from "node:path";
 import { showFatalStartupDialog } from "./fatal-startup-dialog";
@@ -26,6 +26,22 @@ if (profileDir) {
 if (!app.isPackaged && process.platform === "darwin") {
   app.setActivationPolicy("accessory");
   app.once("ready", () => app.setActivationPolicy("regular"));
+}
+
+if (process.platform === "linux") {
+  // Match the WM class to amical.desktop so the GNOME Dock shows the right
+  // icon (must be set before the app is ready).
+  app.commandLine.appendSwitch("class", "amical");
+
+  // The Linux OAuth flow runs in an in-app window (see AuthService) and reads
+  // the callback URL there. Registering the deep-link schemes as standard
+  // makes Chromium keep the full URL (path and query). Must precede app ready.
+  protocol.registerSchemesAsPrivileged(
+    ["amical", "amical-dev"].map((scheme) => ({
+      scheme,
+      privileges: { standard: true, secure: true },
+    })),
+  );
 }
 
 if (started) {

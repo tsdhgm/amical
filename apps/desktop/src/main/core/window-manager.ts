@@ -290,14 +290,16 @@ export class WindowManager extends EventEmitter {
             titleBarStyle: "hiddenInset",
             vibrancy: "menu",
           }
-        : {
-            titleBarStyle: "hidden",
-            titleBarOverlay: {
-              color: colors.backgroundColor,
-              symbolColor: colors.symbolColor,
-              height: 32,
-            },
-          }),
+        : process.platform === "linux"
+          ? {}
+          : {
+              titleBarStyle: "hidden",
+              titleBarOverlay: {
+                color: colors.backgroundColor,
+                symbolColor: colors.symbolColor,
+                height: 32,
+              },
+            }),
       trafficLightPosition: this.getTrafficLightPosition(),
       useContentSize: true,
       webPreferences: {
@@ -521,12 +523,16 @@ export class WindowManager extends EventEmitter {
       show: !inactive,
       backgroundColor: colors.backgroundColor,
       frame: true,
-      titleBarStyle: "hidden",
-      titleBarOverlay: {
-        color: colors.backgroundColor,
-        symbolColor: colors.symbolColor,
-        height: 32,
-      },
+      ...(process.platform === "linux"
+        ? {}
+        : {
+            titleBarStyle: "hidden" as const,
+            titleBarOverlay: {
+              color: colors.backgroundColor,
+              symbolColor: colors.symbolColor,
+              height: 32,
+            },
+          }),
       trafficLightPosition: this.getTrafficLightPosition(),
       resizable: false,
       center: true,

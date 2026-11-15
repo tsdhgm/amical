@@ -258,6 +258,9 @@ export const onboardingRouter = createRouter({
    */
   checkMicrophonePermission: procedure.query(async (): Promise<string> => {
     try {
+      if (process.platform === "linux") {
+        return "granted"; // Linux has no media access API
+      }
       const status = systemPreferences.getMediaAccessStatus("microphone");
       logger.main.debug("Microphone permission status:", status);
       return status;

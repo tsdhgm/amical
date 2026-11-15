@@ -29,8 +29,12 @@ import {
   dictationLanguageForLocale,
   oneCodePerLanguage,
 } from "../constants/languages";
-import { isMacOS } from "../utils/platform";
-import { MAC_KEYCODES, WINDOWS_KEYCODES } from "../utils/keycodes";
+import { isMacOS, isLinux } from "../utils/platform";
+import {
+  MAC_KEYCODES,
+  WINDOWS_KEYCODES,
+  LINUX_KEYCODES,
+} from "../utils/keycodes";
 import {
   CURRENT_SETTINGS_VERSION,
   migrateSettings,
@@ -41,7 +45,7 @@ import { DEFAULT_HISTORY_RETENTION_PERIOD } from "../constants/history-retention
 const SETTINGS_ID = 1;
 
 // Platform-specific default shortcuts (keycode array format)
-const getDefaultShortcuts = () => {
+export const getDefaultShortcuts = () => {
   if (isMacOS()) {
     return {
       pushToTalk: [[MAC_KEYCODES.FN]],
@@ -51,6 +55,24 @@ const getDefaultShortcuts = () => {
       ],
       newNote: [[MAC_KEYCODES.CMD, MAC_KEYCODES.CTRL, MAC_KEYCODES.N]],
       draftMode: [[MAC_KEYCODES.FN, MAC_KEYCODES.CTRL]],
+    };
+  }
+
+  if (isLinux()) {
+    return {
+      pushToTalk: [[LINUX_KEYCODES.CTRL, LINUX_KEYCODES.META]],
+      toggleRecording: [
+        [LINUX_KEYCODES.CTRL, LINUX_KEYCODES.META, LINUX_KEYCODES.SPACE],
+      ],
+      pasteLastTranscript: [
+        [LINUX_KEYCODES.ALT, LINUX_KEYCODES.SHIFT, LINUX_KEYCODES.V],
+      ],
+      newNote: [[LINUX_KEYCODES.ALT, LINUX_KEYCODES.SHIFT, LINUX_KEYCODES.N]],
+      // Modifier-only, pushToTalk (Ctrl+Super) plus Alt — same pattern as the
+      // Windows default below.
+      draftMode: [
+        [LINUX_KEYCODES.CTRL, LINUX_KEYCODES.META, LINUX_KEYCODES.ALT],
+      ],
     };
   }
 

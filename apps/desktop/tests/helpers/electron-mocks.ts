@@ -207,6 +207,7 @@ const testAppPath = process.cwd();
 
 // Mock app object
 const mockApp = {
+  commandLine: { appendSwitch: vi.fn() },
   getPath: vi.fn((name: string) => {
     const paths: Record<string, string> = {
       userData: testUserDataPath,
@@ -437,6 +438,7 @@ export function createElectronMocks() {
     nativeImage: mockNativeImage,
     autoUpdater: mockAutoUpdater as any,
     net: mockNet as any,
+    protocol: { registerSchemesAsPrivileged: vi.fn() },
   };
 }
 

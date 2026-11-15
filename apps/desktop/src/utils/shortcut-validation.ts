@@ -5,16 +5,20 @@
 
 import type { ParseKeys } from "i18next";
 import { formatShortcut } from "./keycode-map";
-import { MAC_KEYCODES, WINDOWS_KEYCODES } from "./keycodes";
+import { MAC_KEYCODES, WINDOWS_KEYCODES, LINUX_KEYCODES } from "./keycodes";
 import {
   MAC_MODIFIER_KEYCODES,
   WINDOWS_MODIFIER_KEYCODES,
+  LINUX_MODIFIER_KEYCODES,
   MAC_MODIFIER_PAIRS,
   WINDOWS_MODIFIER_PAIRS,
+  LINUX_MODIFIER_PAIRS,
   MAC_SPECIAL_KEYCODES,
   WINDOWS_SPECIAL_KEYCODES,
+  LINUX_SPECIAL_KEYCODES,
   RESERVED_SHORTCUTS_MACOS,
   RESERVED_SHORTCUTS_WINDOWS,
+  RESERVED_SHORTCUTS_LINUX,
 } from "./shortcut-constants";
 
 export type ShortcutType =
@@ -66,6 +70,12 @@ const WINDOWS_MODIFIER_NAMES: Record<number, string> = {
   [WINDOWS_KEYCODES.ALT]: "Alt",
   [WINDOWS_KEYCODES.SHIFT]: "Shift",
   [WINDOWS_KEYCODES.WIN]: "Windows",
+};
+const LINUX_MODIFIER_NAMES: Record<number, string> = {
+  [LINUX_KEYCODES.CTRL]: "Ctrl",
+  [LINUX_KEYCODES.ALT]: "Alt",
+  [LINUX_KEYCODES.SHIFT]: "Shift",
+  [LINUX_KEYCODES.META]: "Super",
 };
 
 /**
@@ -139,7 +149,9 @@ export function checkReservedShortcut(
   const reserved =
     platform === "darwin"
       ? RESERVED_SHORTCUTS_MACOS
-      : RESERVED_SHORTCUTS_WINDOWS;
+      : platform === "linux"
+        ? RESERVED_SHORTCUTS_LINUX
+        : RESERVED_SHORTCUTS_WINDOWS;
 
   const normalizedKeys = normalizeKeys(keys);
 
@@ -167,9 +179,17 @@ export function checkAlphanumericOnly(
   platform: NodeJS.Platform,
 ): ValidationResult {
   const modifierSet =
-    platform === "darwin" ? MAC_MODIFIER_KEYCODES : WINDOWS_MODIFIER_KEYCODES;
+    platform === "darwin"
+      ? MAC_MODIFIER_KEYCODES
+      : platform === "linux"
+        ? LINUX_MODIFIER_KEYCODES
+        : WINDOWS_MODIFIER_KEYCODES;
   const specialSet =
-    platform === "darwin" ? MAC_SPECIAL_KEYCODES : WINDOWS_SPECIAL_KEYCODES;
+    platform === "darwin"
+      ? MAC_SPECIAL_KEYCODES
+      : platform === "linux"
+        ? LINUX_SPECIAL_KEYCODES
+        : WINDOWS_SPECIAL_KEYCODES;
 
   // Check if any key is a modifier
   const hasModifier = keys.some((key) => modifierSet.has(key));
@@ -206,9 +226,17 @@ export function checkDuplicateModifierPairs(
   platform: NodeJS.Platform,
 ): ValidationResult {
   const modifierPairs =
-    platform === "darwin" ? MAC_MODIFIER_PAIRS : WINDOWS_MODIFIER_PAIRS;
+    platform === "darwin"
+      ? MAC_MODIFIER_PAIRS
+      : platform === "linux"
+        ? LINUX_MODIFIER_PAIRS
+        : WINDOWS_MODIFIER_PAIRS;
   const modifierNames =
-    platform === "darwin" ? MAC_MODIFIER_NAMES : WINDOWS_MODIFIER_NAMES;
+    platform === "darwin"
+      ? MAC_MODIFIER_NAMES
+      : platform === "linux"
+        ? LINUX_MODIFIER_NAMES
+        : WINDOWS_MODIFIER_NAMES;
 
   for (const [left, right] of modifierPairs) {
     if (keys.includes(left) && keys.includes(right)) {

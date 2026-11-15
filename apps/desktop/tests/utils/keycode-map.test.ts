@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const platform = vi.hoisted(() => ({ windows: false }));
 vi.mock("../../src/utils/platform", () => ({
   isWindows: () => platform.windows,
+  isLinux: () => false,
 }));
 
 import {

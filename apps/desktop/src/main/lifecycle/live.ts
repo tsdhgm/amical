@@ -3,7 +3,7 @@ import {
   flushAllDictationTraces,
   tracePhase,
 } from "../telemetry/dictation-trace";
-import { ipcMain, app } from "electron";
+import { ipcMain, app, clipboard } from "electron";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Deferred, Effect, Layer } from "effect";
@@ -38,6 +38,7 @@ import { REAL_TIMER_HOST, type ShellTimerHost } from "./shell";
 import { runLifecycleRecovery } from "./startup-recovery";
 import { DEFAULT_LIFECYCLE_TUNING } from "./tuning";
 import { AudioCaptureInfoSchema } from "../../types/audio-capture";
+import { isLinux } from "../../utils/platform";
 
 /**
  * Desktop binding of the recording lifecycle: real ambiance (native start/
@@ -76,6 +77,35 @@ function degradedTranscriptionService() {
     isHistoryRetryInProgress: () => false,
     updateStreamingSession: async () => undefined,
   };
+}
+
+/**
+ * Linux paste: Electron writes the clipboard (no wl-copy race) and the helper
+ * only simulates the paste keystroke.
+ */
+async function pasteTextOnLinux(
+  nativeBridge: NativeBridge,
+  options: { transcript: string; preserveClipboard: boolean },
+): Promise<{ success: boolean }> {
+  const savedClipboard = options.preserveClipboard
+    ? await clipboard.readText()
+    : null;
+  await clipboard.writeText(options.transcript);
+  try {
+    const result = await nativeBridge.call("pasteText", {
+      transcript: options.transcript,
+      preserveClipboard: false,
+      keystrokeOnly: true,
+    });
+    return { success: !!result?.success };
+  } finally {
+    if (savedClipboard !== null) {
+      // Give the focused app time to read the clipboard before restoring.
+      setTimeout(() => {
+        void clipboard.writeText(savedClipboard).catch(() => undefined);
+      }, 500);
+    }
+  }
 }
 
 export function createDesktopRecordingLifecycle(deps: {
@@ -167,6 +197,9 @@ export function createDesktopRecordingLifecycle(deps: {
     bridge: nativeBridge
       ? {
           pasteText: async (options) => {
+            if (isLinux()) {
+              return pasteTextOnLinux(nativeBridge, options);
+            }
             const result = await nativeBridge.call("pasteText", {
               transcript: options.transcript,
               preserveClipboard: options.preserveClipboard,

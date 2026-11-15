@@ -403,7 +403,9 @@ export class OnboardingService extends EventEmitter {
     accessibility: boolean;
   } {
     const microphone =
-      systemPreferences.getMediaAccessStatus("microphone") === "granted";
+      process.platform === "linux"
+        ? true // Linux has no media access API; PipeWire/PulseAudio decide
+        : systemPreferences.getMediaAccessStatus("microphone") === "granted";
 
     const accessibility =
       process.platform === "darwin"
