@@ -1,6 +1,10 @@
 import * as readline from "node:readline";
 import { dispatch } from "./rpc/dispatcher.js";
 import { startKeyboardMonitor } from "./evdev/monitor.js";
+import { restoreSystemAudioOnExit } from "./handlers/recording.js";
+
+// Covers every way out of the process except SIGKILL.
+process.on("exit", restoreSystemAudioOnExit);
 
 process.stderr.write("LinuxHelper: starting\n");
 
