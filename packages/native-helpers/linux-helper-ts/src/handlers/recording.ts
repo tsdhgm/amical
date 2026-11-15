@@ -48,24 +48,35 @@ function getResourcesDir(): string {
 /**
  * Play a sound file using the best available player.
  * Detached so it doesn't block the RPC response.
+ *
+ * The returned promise settles when the player exits (or after a short cap),
+ * for callers that must not cut the sound off, e.g. by muting the output.
  */
-function playSound(soundName: string): void {
+function playSound(soundName: string): Promise<void> {
   const soundFile = path.join(getResourcesDir(), `${soundName}.mp3`);
   if (!fs.existsSync(soundFile)) {
     process.stderr.write(`Sound file not found: ${soundFile}\n`);
-    return;
+    return Promise.resolve();
   }
 
-  // Try gst-play-1.0 (GStreamer, widely available on Linux desktops)
-  const child = spawn("gst-play-1.0", [soundFile], {
-    stdio: "ignore",
-    detached: true,
-  });
-  child.unref();
-  child.on("error", () => {
-    // Fallback: try paplay (PulseAudio) — works only with WAV/OGG
-    // mp3 via paplay requires libpulse mp3 support which is rare
-    process.stderr.write(`gst-play-1.0 not available, sound skipped\n`);
+  return new Promise((resolve) => {
+    // The cap keeps a stuck player from holding up the caller.
+    const cap = setTimeout(resolve, 1000);
+    const done = () => {
+      clearTimeout(cap);
+      resolve();
+    };
+    // gst-play-1.0 (GStreamer, widely available on Linux desktops)
+    const child = spawn("gst-play-1.0", [soundFile], {
+      stdio: "ignore",
+      detached: true,
+    });
+    child.unref();
+    child.on("exit", done);
+    child.on("error", () => {
+      process.stderr.write(`gst-play-1.0 not available, sound skipped\n`);
+      done();
+    });
   });
 }
 
@@ -88,9 +99,7 @@ export async function handleStartRecording(
   const muteSounds = params.muteSounds === true;
 
   try {
-    if (!muteSounds) {
-      playSound("rec-start");
-    }
+    const startSound = muteSounds ? Promise.resolve() : playSound("rec-start");
 
     // Clear clipboard to prevent stale content from being pasted
     // if the paste fires before wl-copy finishes setting new content.
@@ -104,6 +113,8 @@ export async function handleStartRecording(
     if (muteSystemAudio) {
       wasMutedBeforeRecording = await getSinkMuteState();
       if (!wasMutedBeforeRecording) {
+        // Let the start sound finish first, or the mute would silence it.
+        await startSound;
         await execFileAsync("pactl", [
           "set-sink-mute",
           "@DEFAULT_SINK@",
@@ -136,7 +147,7 @@ export async function handleStopRecording(
     }
 
     if (!muteSounds) {
-      playSound("rec-stop");
+      void playSound("rec-stop");
     }
 
     return { success: true };
