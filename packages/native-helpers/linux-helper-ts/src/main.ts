@@ -1,6 +1,6 @@
 import * as readline from "node:readline";
 import { dispatch } from "./rpc/dispatcher.js";
-import { startKeyboardMonitor } from "./evdev/monitor.js";
+import { startKeyboardMonitor, stopXkbRemapWatch } from "./evdev/monitor.js";
 import { restoreSystemAudioOnExit } from "./handlers/recording.js";
 
 /**
@@ -13,6 +13,7 @@ import { restoreSystemAudioOnExit } from "./handlers/recording.js";
  */
 function exitNow(): never {
   restoreSystemAudioOnExit();
+  stopXkbRemapWatch();
   process.kill(process.pid, "SIGKILL");
   // Unreachable in practice; satisfies the type and covers a failed kill.
   process.exit(0);
