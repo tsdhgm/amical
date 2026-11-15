@@ -57,8 +57,12 @@ upstream `amicalhq/amical` and adds Linux-specific support.
 
 ### Local dev
 ```bash
-cd apps/desktop && ELECTRON_DISABLE_SANDBOX=1 pnpm start
+cd apps/desktop && ELECTRON_DISABLE_SANDBOX=1 pnpm start -- --ozone-platform=x11
 ```
+Use a separate profile per app version: Amical 1.13.x upgrades the database in
+`~/.config/Amical`, after which 1.1.0 resets its settings and cannot process
+audio. (`pnpm start` already uses `~/.config/Amical-dev`; packaged builds
+share `~/.config/Amical`.)
 
 ### Release build (.deb + AppImage)
 ```bash
@@ -69,14 +73,18 @@ Outputs:
 - `apps/desktop/out/make/deb/x64/amical_<version>_amd64.deb`
 
 ### Pre-release on GitHub
+- Releases currently come from `develop_ubuntu_electron38` (Amical 1.1.0 on
+  Electron 38), a stopgap branch kept until the Electron 44 build on
+  `develop_ubuntu` is stable: its main window stays blank when started from
+  the desktop shell. Latest: `v1.1.0-linux.9`.
 - Tag: `v1.1.0-linux.N` (incremental on the same `1.1.0` base)
-- Repo: `tosihide/amical`, marked `--prerelease`
+- Repo: `tsdhgm/amical`, marked `--prerelease`
 - Notes: **English required**; Japanese optional. When adding Japanese,
   put it after the English section under a `## Japanese` heading.
 
 ```bash
 gh release create v1.1.0-linux.N \
-  --repo tosihide/amical --target <branch> --prerelease \
+  --repo tsdhgm/amical --target <branch> --prerelease \
   --title "v1.1.0-linux.N (<distro/context>)" \
   --notes "$(cat <<'EOF'
 ...English notes...
