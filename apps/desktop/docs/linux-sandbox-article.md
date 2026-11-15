@@ -324,9 +324,9 @@ postPackage: async (_forgeConfig, options) => {
   if (platform === "linux") {
     for (const outputPath of outputPaths) {
       const sandboxPath = join(outputPath, "chrome-sandbox");
-      // .deb の場合は electron-installer-debian が SUID を設定するため、
-      // ここでの設定は通常不要。
-      // tar.gz 配布の場合にのみ検討。
+      // For the .deb, electron-installer-debian sets the SUID bit,
+      // so it normally does not need to be set here.
+      // Only worth considering for a tar.gz distribution.
       console.log(`[postPackage] chrome-sandbox at: ${sandboxPath}`);
     }
   }

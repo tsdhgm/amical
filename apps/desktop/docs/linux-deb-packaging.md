@@ -55,10 +55,10 @@ sudo apt install dpkg fakeroot imagemagick
 ```bash
 cd apps/desktop
 
-# Node.js バイナリのダウンロード
+# Download the Node.js binary
 pnpm download-node
 
-# アイコン用 PNG の生成（logo.png が存在しない場合）
+# Generate the icon PNG (if logo.png does not exist)
 convert assets/logo.svg -resize 256x256 assets/logo.png
 ```
 
@@ -86,7 +86,7 @@ apps/desktop/out/make/AppImage/x64/Amical-1.1.0-x64.AppImage # 196 MB
 
 ```bash
 sudo dpkg -i out/make/deb/x64/amical_1.1.0_amd64.deb
-sudo apt-get install -f   # 不足する依存パッケージがあれば自動インストール
+sudo apt-get install -f   # Installs any missing dependency packages
 ```
 
 - Launch from the application menu or via the `Amical` command
@@ -97,11 +97,11 @@ sudo apt-get install -f   # 不足する依存パッケージがあれば自動�
 #### AppImage (User Installation)
 
 ```bash
-# 任意の場所にコピー（例: ~/Applications/）
+# Copy it anywhere you like (e.g. ~/Applications/)
 mkdir -p ~/Applications
 cp out/make/AppImage/x64/Amical-1.1.0-x64.AppImage ~/Applications/
 
-# 実行権限を付与して起動
+# Make it executable and launch it
 chmod +x ~/Applications/Amical-1.1.0-x64.AppImage
 ~/Applications/Amical-1.1.0-x64.AppImage
 ```
@@ -118,10 +118,10 @@ You can also build using the scripts defined in `package.json`,
 but it will also attempt to build RPM, which requires `rpmbuild`:
 
 ```bash
-# RPM も含めてビルドする場合（要 rpmbuild: sudo apt install rpm）
+# Build including the RPM (needs rpmbuild: sudo apt install rpm)
 pnpm make:linux
 
-# RPM をスキップして .deb + AppImage のみビルドする場合
+# Skip the RPM and build only the .deb + AppImage
 SKIP_RPM=true pnpm exec electron-forge make --platform=linux --arch=x64
 ```
 
@@ -146,7 +146,7 @@ and the entire build fails if the `rpmbuild` command is not present.
 Made `MakerRpm` conditional on the `SKIP_RPM` environment variable in `forge.config.ts`:
 
 ```typescript
-// forge.config.ts (変更後)
+// forge.config.ts (after the change)
 ...(process.env.SKIP_RPM !== "true"
   ? [
       new MakerRpm({
@@ -200,13 +200,13 @@ The binary name should be `Amical`, but `package.json`'s `name` (`@amical/deskto
 The behavior of the `generateTargets` function in `electron-forge`'s `make.js`:
 
 ```javascript
-// node_modules/@electron-forge/core/dist/api/make.js (24-34行目)
+// node_modules/@electron-forge/core/dist/api/make.js (lines 24-34)
 function generateTargets(forgeConfig, overrideTargets) {
     if (overrideTargets) {
         return overrideTargets.map((target) => {
             if (typeof target === 'string') {
-                // maker.name は 'deb' だが target は '@electron-forge/maker-deb'
-                // → マッチしないため { name: target } （設定なし）が返される
+                // maker.name is 'deb' but target is '@electron-forge/maker-deb'
+                // -> no match, so { name: target } (no configuration) is returned
                 return forgeConfig.makers.find((maker) => maker.name === target)
                     || { name: target };
             }
@@ -224,7 +224,7 @@ Since the names do not match, **a new MakerDeb instance with no configuration is
 Without configuration, the default value generation logic in `electron-installer-common` produces:
 
 ```javascript
-// node_modules/electron-installer-common/src/defaults.js (15行目)
+// node_modules/electron-installer-common/src/defaults.js (line 15)
 bin: pkg.name || 'electron',  // → '@amical/desktop'
 ```
 
@@ -273,9 +273,9 @@ convert assets/logo.svg -resize 256x256 assets/logo.png
 ```typescript
 new MakerDeb({
   options: {
-    bin: "Amical",           // 実行バイナリ名（必須）
-    name: "amical",          // Debian パッケージ名
-    productName: "Amical",   // 表示名
+    bin: "Amical",           // Executable name (required)
+    name: "amical",          // Debian package name
+    productName: "Amical",   // Display name
     genericName: "Dictation App",
     categories: ["Utility", "Audio"],
     description: "AI-powered dictation and note-taking",

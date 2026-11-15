@@ -72,7 +72,7 @@ Outputs:
 - Tag: `v1.1.0-linux.N` (incremental on the same `1.1.0` base)
 - Repo: `tosihide/amical`, marked `--prerelease`
 - Notes: **English required**; Japanese optional. When adding Japanese,
-  put it after the English section under `## 日本語`.
+  put it after the English section under a `## Japanese` heading.
 
 ```bash
 gh release create v1.1.0-linux.N \

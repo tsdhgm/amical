@@ -506,21 +506,21 @@ The settings screen React component calls `setShortcutRecordingState(true)` via 
 // shortcut-input.tsx
 const handleStartRecording = () => {
   onRecordingShortcutChange(true);
-  setRecordingStateMutation.mutate(true);  // メインプロセスに通知
+  setRecordingStateMutation.mutate(true);  // Notify the main process
 };
 
-// tRPCのSubscriptionで、evdev由来のキーイベントをリアルタイム受信
+// Receive evdev key events in real time through a tRPC subscription
 api.settings.activeKeysUpdates.useSubscription(undefined, {
   enabled: isRecordingShortcut,
   onData: (keys: number[]) => {
     const previousKeys = activeKeys;
     setActiveKeys(keys);
 
-    // キーが離されたら → 直前の組み合わせでバリデーション
+    // When the keys are released -> validate the last combination
     if (previousKeys.length > 0 && keys.length < previousKeys.length) {
       const result = validateShortcutFormat(previousKeys);
       if (result.valid && result.shortcut) {
-        onChange(result.shortcut);  // 親コンポーネントへ通知
+        onChange(result.shortcut);  // Notify the parent component
       }
       // ...
     }

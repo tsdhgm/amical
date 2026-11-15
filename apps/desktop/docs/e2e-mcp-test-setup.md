@@ -116,14 +116,14 @@ Replace `/_O/amical` with the actual project root path.
 #### Patch Application Script
 
 ```bash
-# パッチファイルの場所を特定
+# Locate the file to patch
 MCP_INDEX=$(find ~/.npm/_npx -path "*/electron-test-mcp/dist/index.js" | head -1)
 echo "Patching: $MCP_INDEX"
 
-# バックアップ
+# Back it up
 cp "$MCP_INDEX" "$MCP_INDEX.bak"
 
-# sed で置換（プロジェクトパスは適宜変更）
+# Replace with sed (adjust the project path as needed)
 sed -i 's|electronApp = await _electron.launch({|const execPath = args?.executablePath || process.env.ELECTRON_PATH || "/_O/amical/node_modules/electron/dist/electron";\n                electronApp = await _electron.launch({\n                    executablePath: execPath,|' "$MCP_INDEX"
 sed -i 's|args: \[appPath\],|args: ["--no-sandbox", "--ozone-platform=x11", appPath],|' "$MCP_INDEX"
 sed -i 's|TEST_MODE: "true"|TEST_MODE: "true", ELECTRON_DISABLE_SANDBOX: "1"|' "$MCP_INDEX"
@@ -180,13 +180,13 @@ These are used for the OAuth E2E test. This file is loaded by `dotenv.config()` 
 Before each test run, delete data from the previous run to start fresh:
 
 ```bash
-# DB ファイルの削除（全候補パスを網羅）
+# Delete the DB files (covers every candidate path)
 rm -f ~/.config/Electron/amical.db \
       ~/.config/Amical/amical.db \
       /_O/amical/apps/desktop/amical.db \
       /_O/amical/amical.db
 
-# auth セッションのクリア（必要に応じて）
+# Clear the auth session (if needed)
 rm -rf ~/.config/Electron/Partitions/auth-oauth
 ```
 
@@ -385,10 +385,10 @@ rm -f ~/.config/Electron/amical.db \
 To fully reset the configuration directory:
 
 ```bash
-# dev ビルド用
+# For the dev build
 rm -rf ~/.config/Electron/
 
-# パッケージビルド用
+# For the packaged build
 rm -rf ~/.config/Amical/
 ```
 
@@ -518,23 +518,23 @@ Log format: `[datetime] [level] [scope] message`
 ### Useful grep Patterns
 
 ```bash
-# OAuth フロー全体の追跡
+# Follow the whole OAuth flow
 grep -E "OAuth|auth-diag|Login complete|will-redirect|did-navigate|handleAuthCallback|Token exchange|Authentication" \
   ~/.config/Electron/logs/amical-dev.log | tail -40
 
-# エラーのみ
+# Errors only
 grep -i "error" ~/.config/Electron/logs/amical-dev.log | tail -20
 
-# AuthService の初期化と設定確認
+# AuthService initialization and configuration
 grep "AuthService initialized" ~/.config/Electron/logs/amical-dev.log
 
-# リダイレクト URI の確認
+# Check the redirect URI
 grep "redirectUri\|redirect_uri\|OAuth callback" ~/.config/Electron/logs/amical-dev.log
 
-# DB マイグレーション
+# DB migrations
 grep -i "migration" ~/.config/Electron/logs/amical-dev.log
 
-# メインプロセスのエラー
+# Main-process errors
 grep "\[main\].*error" ~/.config/Electron/logs/amical-dev.log | tail -10
 ```
 

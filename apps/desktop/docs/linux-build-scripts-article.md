@@ -26,18 +26,18 @@ The package build is executed with a single command: `pnpm make:linux`. Internal
 ```
 pnpm make:linux
   |
-  +-- 1. pnpm build:deps         # 依存パッケージのビルド
-  |     +-- build:types           # @amical/types（共有型定義）
-  |     +-- build:native-helper   # プラットフォーム別ヘルパー（Linuxでは何もしない）
+  +-- 1. pnpm build:deps         # Build dependency packages
+  |     +-- build:types           # @amical/types (shared type definitions)
+  |     +-- build:native-helper   # Per-platform helper (a no-op on Linux)
   |
-  +-- 2. pnpm build:linux-helper  # Linux専用ヘルパーのビルド
+  +-- 2. pnpm build:linux-helper  # Build the Linux-only helper
   |
   +-- 3. SKIP_RPM=true electron-forge make --platform=linux --arch=x64
-        +-- prePackage フック      # Node.jsバイナリのコピー、依存モジュール解決
-        +-- Vite ビルド            # main/preload/rendererの各エントリ
-        +-- パッケージング          # ASAR作成、extraResourceコピー
-        +-- postPackage フック     # プラットフォーム別の後処理
-        +-- Maker実行             # .deb と AppImage の生成
+        +-- prePackage hook        # Copy the Node.js binary, resolve dependency modules
+        +-- Vite build             # main/preload/renderer entries
+        +-- Packaging              # Create the ASAR, copy extraResource
+        +-- postPackage hook       # Per-platform post-processing
+        +-- Run makers             # Generate the .deb and AppImage
 ```
 
 ### package.json Script Definitions
@@ -45,20 +45,20 @@ pnpm make:linux
 ```jsonc
 {
   "scripts": {
-    // 開発起動
+    // Development start
     "start": "pnpm build:deps && electron-forge start",
 
-    // Linuxパッケージビルド（.deb + AppImage）
+    // Linux package build (.deb + AppImage)
     "make:linux": "pnpm build:deps && pnpm build:linux-helper && SKIP_RPM=true electron-forge make --platform=linux --arch=x64",
 
-    // パッケージのみ（Maker実行なし = .debやAppImage生成なし）
+    // Package only (no makers run = no .deb or AppImage)
     "package:linux": "pnpm build:deps && pnpm build:linux-helper && electron-forge package --platform=linux --arch=x64",
 
-    // 依存ビルド
+    // Dependency build
     "build:deps": "pnpm build:types && pnpm build:native-helper",
     "build:linux-helper": "cd ../../packages/native-helpers/linux-helper-ts && npm run build",
 
-    // プラットフォーム判定で適切なヘルパーをビルド
+    // Build the right helper for the current platform
     "build:native-helper": "node -e \"const s = process.platform === 'darwin' ? 'build:swift-helper' : process.platform === 'win32' ? 'build:windows-helper' : ''; if (s) { require('child_process').execSync('pnpm run ' + s, {stdio:'inherit'}); } else { console.log('No native helpers'); }\""
   }
 }
@@ -86,14 +86,14 @@ const config: ForgeConfig = {
     // macOS
     new MakerZIP({}, ["darwin"]),
     new MakerDMG({ icon: "./assets/logo.icns", background: "./assets/dmg_bg.tiff" }, ["darwin"]),
-    // Linux: RPM（条件付き）
+    // Linux: RPM (conditional)
     ...(process.env.SKIP_RPM !== "true"
       ? [new MakerRpm({ options: { categories: ["Utility", "Audio"], description: "..." } })]
       : []),
     // Linux: deb
-    new MakerDeb({ options: { /* 後述 */ } }),
+    new MakerDeb({ options: { /* described below */ } }),
     // Linux: AppImage
-    new MakerAppImage({ options: { /* 後述 */ } }),
+    new MakerAppImage({ options: { /* described below */ } }),
   ],
 };
 ```
@@ -203,7 +203,7 @@ export const EXTERNAL_DEPENDENCIES = [
 In a monorepo, `node_modules` are hoisted to the root, so Electron Forge's default module resolution cannot find them. Using `flora-colossus` (an internal dependency of Electron Forge), nested dependencies for each module are recursively explored and copied to the local `node_modules`.
 
 ```typescript
-// flora-colossus で依存ツリーを歩く
+// Walk the dependency tree with flora-colossus
 const walker = new Walker(monorepoRoot);
 await walker.walkDependenciesForModule(moduleRoot, DepType.PROD);
 ```
@@ -213,7 +213,7 @@ await walker.walkDependenciesForModule(moduleRoot, DepType.PROD);
 `onnxruntime-node` includes binaries for all platforms, which bloats the package size if left as-is. Binaries for non-target platforms are deleted.
 
 ```typescript
-// 不要なプラットフォームのバイナリを削除
+// Remove binaries for platforms we do not need
 if (platformDir !== targetPlatform && platformDir !== "linux") {
   rmSync(platformPath, { recursive: true, force: true });
 }
@@ -272,7 +272,7 @@ There is currently no additional postPackage processing for Linux, but in `.deb`
 LinuxHelper runs as an independent Node.js process and communicates with the Electron main process via JSON-RPC.
 
 ```
-Electron (メインプロセス)  <--stdin/stdout JSON-RPC-->  LinuxHelper
+Electron (main process)  <--stdin/stdout JSON-RPC-->  LinuxHelper
 ```
 
 Key features:
@@ -301,7 +301,7 @@ TypeScript is compiled, and execute permission is granted to the entry point scr
       "../../packages/native-helpers/linux-helper-ts/dist",
       "../../packages/native-helpers/linux-helper-ts/resources",
     ]
-  : [/* macOS/Windows のヘルパー */]),
+  : [/* macOS/Windows helpers */]),
 ```
 
 ---
@@ -347,9 +347,9 @@ No sudo required. To uninstall, simply delete the file.
 ```typescript
 new MakerDeb({
   options: {
-    bin: "Amical",           // 実行バイナリ名（最重要）
-    name: "amical",          // Debian パッケージ名（小文字）
-    productName: "Amical",   // 表示名
+    bin: "Amical",           // Executable name (most important)
+    name: "amical",          // Debian package name (lowercase)
+    productName: "Amical",   // Display name
     genericName: "Dictation App",
     categories: ["Utility", "Audio"],
     description: "AI-powered dictation and note-taking",
@@ -389,8 +389,8 @@ function generateTargets(forgeConfig, overrideTargets) {
   if (overrideTargets) {
     return overrideTargets.map((target) => {
       if (typeof target === 'string') {
-        // maker.name は 'deb' だが target は '@electron-forge/maker-deb'
-        // --> マッチしないため設定なしの Maker が生成される
+        // maker.name is 'deb' but target is '@electron-forge/maker-deb'
+        // --> no match, so a maker with no configuration is created
         return forgeConfig.makers.find((maker) => maker.name === target)
             || { name: target };
       }
@@ -412,10 +412,10 @@ The name passed to `--targets` is the NPM package name (`@electron-forge/maker-d
 ### During Development
 
 ```bash
-# 方法1: run.sh を使用
+# Option 1: use run.sh
 ./run.sh
 
-# 方法2: 直接実行
+# Option 2: run directly
 cd apps/desktop && ELECTRON_DISABLE_SANDBOX=1 pnpm start
 ```
 
@@ -445,14 +445,14 @@ out/make/AppImage/x64/Amical-1.1.0-x64.AppImage # ~196 MB
 ### First-Time Setup (Prerequisites)
 
 ```bash
-# Node.js バイナリのダウンロード
+# Download the Node.js binary
 pnpm download-node
 
-# PNG アイコンの生成（リポジトリには SVG のみ）
+# Generate the PNG icon (the repository only has the SVG)
 sudo apt install imagemagick
 convert assets/logo.svg -resize 256x256 assets/logo.png
 
-# deb ビルドに必要なツール
+# Tools needed for the deb build
 sudo apt install dpkg fakeroot
 ```
 
@@ -518,7 +518,7 @@ When installed via `.deb`, the SUID bit is automatically set on `chrome-sandbox`
 
 ```typescript
 export const EXTERNAL_DEPENDENCIES = [
-  "new-native-module",  // ここに追加
+  "new-native-module",  // add it here
   // ...
 ];
 ```
