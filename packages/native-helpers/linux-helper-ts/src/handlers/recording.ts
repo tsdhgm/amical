@@ -1,4 +1,4 @@
-import { execFile, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import * as path from "node:path";
 import * as fs from "node:fs";
@@ -6,6 +6,26 @@ import * as fs from "node:fs";
 const execFileAsync = promisify(execFile);
 
 let wasMutedBeforeRecording = false;
+// True while the system output is muted because of a recording we started.
+let mutedByRecording = false;
+
+/**
+ * Undo a recording-time mute when the helper is going away (app quit, crash,
+ * kill). Without this the system output would stay muted, and the next
+ * session would then take "muted" for the user's own setting and never
+ * unmute. Synchronous, because it runs on the way out of the process.
+ */
+export function restoreSystemAudioOnExit(): void {
+  if (!mutedByRecording) return;
+  mutedByRecording = false;
+  try {
+    execFileSync("pactl", ["set-sink-mute", "@DEFAULT_SINK@", "0"], {
+      timeout: 2000,
+    });
+  } catch {
+    // Best effort
+  }
+}
 
 /**
  * Resolve the resources directory.
@@ -89,6 +109,7 @@ export async function handleStartRecording(
           "@DEFAULT_SINK@",
           "1",
         ]);
+        mutedByRecording = true;
       }
     }
     return { success: true };
@@ -111,6 +132,7 @@ export async function handleStopRecording(
         "@DEFAULT_SINK@",
         "0",
       ]);
+      mutedByRecording = false;
     }
 
     if (!muteSounds) {
