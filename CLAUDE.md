@@ -13,12 +13,17 @@ here.
 
 ## Linux porting status
 
-Porting Amical Desktop to Linux. This fork (`tosihide/amical`) tracks the
+Porting Amical Desktop to Linux. This fork (`tsdhgm/amical`) tracks the
 upstream `amicalhq/amical` and adds Linux-specific support.
 
-- Active branch: `ubuntu-26.04-lts` — targets Ubuntu 26.04 LTS only
-- Predecessor: `develop_ubuntu` (24.04 series), released through `v1.1.0-linux.7`
-- 26.04 series starts at `v1.1.0-linux.8` (2026-05-04)
+- `main` is kept identical to upstream; merge it into `develop_ubuntu` often
+- Active branch: `develop_ubuntu` — the Linux port on upstream v1.13.2
+  (Ubuntu 26.04 LTS, Wayland session, app runs through XWayland)
+- History: the port was first developed in `tosihide/amical`
+  (`develop_ubuntu`, then `ubuntu-26.04-lts`, released up to
+  `v1.1.0-linux.8`) and merged here in November 2026
+- What broke in that move, and the checklist for the next upstream merge:
+  `apps/desktop/docs/linux-upstream-sync-notes.md`
 
 ### Known platform quirks (Linux)
 - **whisper.cpp + OpenMP**: static `libgomp.a` lacks `-fPIC`, so building the
